@@ -15,7 +15,7 @@ namespace VBAnalyst
 
         private static long ClIdMax = 0;
 
-        public Procedure(long lID, string stModID, string stName, int nScope)
+        public Procedure(string stModID, string stName, int nScope)
         {
             CstProcedureID = CreateProcedureID();
             CstModuleID = stModID;

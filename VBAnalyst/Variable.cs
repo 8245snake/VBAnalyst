@@ -19,7 +19,7 @@ namespace VBAnalyst
 
         private static long ClIdMax = 0;
 
-        public Variable(long lID, string stModID,string stName,int nScope, int nkind)
+        public Variable(string stModID,string stName,int nScope, int nkind)
         {
             CstVariableID = CreateVariableID();
             CstModuleID = stModID;

@@ -22,14 +22,46 @@ namespace VBAnalyst
         public const string FILE_MODULE = "Module";
         public const string FILE_CLASS = "Class";
 
+        public static int GetVariableScope(string stScope)
+        {
+            switch (stScope.Trim())
+            {
+                case "Public":
+                    return SCOPE_PUBLIC;
+                case "Gloval":
+                    return SCOPE_PUBLIC;
+                case "Private":
+                    return SCOPE_PRIVATE;
+                case "Dim":
+                    return SCOPE_PRIVATE;
+                default:
+                    return -1;
+            }
+        }
+
+        public static int GetProcedureScope(string stScope)
+        {
+            switch (stScope.Trim())
+            {
+                case "Public":
+                    return SCOPE_PUBLIC;
+                case "Private":
+                    return SCOPE_PRIVATE;
+                case "":
+                    return SCOPE_PUBLIC;
+                default:
+                    return -1;
+            }
+        }
+
         public static string GetScopeName(int nScope)
         {
             switch (nScope)
             {
                 case SCOPE_PUBLIC:
-                    return "public";
+                    return "Public";
                 case SCOPE_PRIVATE:
-                    return "private";
+                    return "Private";
                 default:
                     return "不明";
             }

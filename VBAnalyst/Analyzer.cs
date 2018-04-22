@@ -10,49 +10,113 @@ namespace VBAnalyst
     public class Analyzer
     {
         readonly string[] IgnoreList = { "Attribute", "Option", "VERSION" };
-        Regex regProcedure;
-        Regex regVariable;
-        Regex regAssignment;
+        Regex regProcedure; //プロシージャ
+        Regex regVariable; //変数定義
+        Regex regAssignment; //代入式
+        Regex regEndProc; //End SubもしくはEnd Function
 
         public Analyzer()
         {
             //プロシージャの定義式
             regProcedure = new Regex(@"((?<scope>(Private|Public)) )?(Sub|Function) (?<name>.+?)\(", RegexOptions.Compiled);
             //変数の定義式
-            regVariable = new Regex(@"(?<scope>(Private|Public|Dim|Global))( Const)? (?<name>[^\(]*) As .*", RegexOptions.Compiled);
+            regVariable = new Regex(@"(?<scope>(Private|Public|Dim|Global))( Const)? (?!Sub|Function)(?<name>.*)", RegexOptions.Compiled);
             //代入式（If文の条件部分も拾ってしまう）
             regAssignment = new Regex(@"(?<left>.*) = (?<right>.*)", RegexOptions.Compiled);
+            //End句
+            regEndProc = new Regex(@"End (Sub|Function)", RegexOptions.Compiled);
 
         }
 
-        public void AnalysisModule(SourceFile sourceFile)
+        /// <summary>
+        /// 関数外で定義している変数と関数を登録したら一旦リストを返す
+        /// </summary>
+        /// <param name="sourceFile"></param>
+        public List<string> AnalyzeModule(SourceFile sourceFile)
         {
+            IEnumerable<string> list;
+
             //余計な要素を削除
-            IEnumerable<string> list = DeleteText(ReadFileByLine(sourceFile.Path));
+            list = DeleteText(ReadFileByLine(sourceFile.Path));
             list = ConmbineUnderscore(list);
             list = DeleteBiginEnd(list);
             list = ApplyIgnoreList(list);
 
-            bool blProcedureFlag = false;
-            Match match;
+            //関数外での定義を解析
+            list = AnalyzeModuleDefinition(list, sourceFile);
 
-            //解析する
+            //結果表示
+            //foreach (string item in list)
+            //{
+            //    Console.WriteLine(item);
+            //}
+
+            return list.ToList<string>();
+
+        }
+
+
+
+        //関数内を解析する（）
+        public void AnalyzeProcedure(List<string> list, SourceFile sourceFile)
+        {
             foreach (string item in list)
             {
-                match = regProcedure.Match(item);
-                if (match.Success)
+
+            }
+        }
+
+
+            /// <summary>
+            /// モジュール変数と関数の定義式を解析する
+            /// </summary>
+            /// <param name="list"></param>
+            /// <returns></returns>
+            private IEnumerable<string> AnalyzeModuleDefinition(IEnumerable<string> list, SourceFile sourceFile)
+        {
+            Match match;
+            string stScope;
+            string stName;
+            bool blProcedureFlag = false; // 解析フラグ
+
+            foreach (string item in list)
+            {
+                if (blProcedureFlag) //関数内ではEnd Subなどをチェック 
                 {
-                    Console.WriteLine(match.Groups["scope"].Value + " 関数 " + match.Groups["name"].Value);
+                    match = regEndProc.Match(item);
+                    blProcedureFlag = !match.Success;
+                    yield return item;
+                    continue;
+                }
+                else  //関数外では定義式かをチェック
+                {
+                    //関数の定義式かを判定
+                    match = regProcedure.Match(item);
+                    if (match.Success)
+                    {
+                        stScope = match.Groups["scope"].Value;
+                        stName = match.Groups["name"].Value;
+                        AnalysisData.AddProcedures(sourceFile.ID, stName, GetProcedureScope(stScope));
+                        blProcedureFlag = true;
+                        yield return item;
+                        continue;
+                    }
                 }
 
+                //関数の外での変数の定義式かを判定
                 match = regVariable.Match(item);
                 if (match.Success)
                 {
-                    Console.WriteLine(match.Groups["scope"].Value + " 変数 " + match.Groups["name"].Value);
+                    stScope = match.Groups["scope"].Value;
+                    stName = ExtractVariableName(match.Groups["name"].Value);
+                    AnalysisData.AddVariable(sourceFile.ID, stName, GetVariableScope(stScope), KIND_MODULE);
+                    continue;
+                }
+                else
+                {
+                    yield return item;
                 }
 
-                //Console.WriteLine(item);
-                //WriteText(@"C:\Users\Shingo\Desktop\test.txt", item, true);
             }
         }
 
@@ -229,6 +293,23 @@ namespace VBAnalyst
                 stRtn += stArr[i];
             }
 
+            return stRtn;
+        }
+
+        private string ExtractVariableName(string stName)
+        {
+            char[] stArr = stName.Trim().ToCharArray();
+            string stRtn = "";
+
+            foreach (char item in stArr)
+            {
+                if (item == ' ' || item == '(')
+                {
+                    return stRtn;
+                }
+
+                stRtn += item;
+            }
             return stRtn;
         }
     }

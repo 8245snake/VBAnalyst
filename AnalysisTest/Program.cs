@@ -15,8 +15,8 @@ namespace AnalysisTest
             string stDir = @"C:\Users\Shingo\Downloads\GSPL88J101\";
             SourceFile file;
 
-            Analyzer anal = new Analyzer();
-
+            Analyzer analyzer = new Analyzer();
+            List<string> list;
 
             var stopwatch = new System.Diagnostics.Stopwatch();
 
@@ -30,7 +30,7 @@ namespace AnalysisTest
                 if (file != null)
                 {
                     Console.WriteLine(file.ToString());
-                    anal.AnalysisModule(file);
+                    list = analyzer.AnalyzeModule(file);
                     Console.WriteLine("");
                 }
             }
@@ -39,6 +39,9 @@ namespace AnalysisTest
 
             //TimeSpan timespan = stopwatch.Elapsed;
             Console.WriteLine($"　{stopwatch.ElapsedMilliseconds}ミリ秒");
+
+            AnalysisData.EnumVariables();
+            AnalysisData.EnumProcedures();
 
             Console.ReadKey();
         }
