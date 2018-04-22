@@ -12,12 +12,15 @@ namespace VBAnalyst
     public class Variable
     {
         private string CstVariableID; //変数ID
-        private string CstModuleID; //この変数を定義しているモジュールのID
+        private string CstModuleID; //この変数を定義しているモジュールのID（ローカルだったらプロシージャID入れる？）
         private string CstName; ///変数名
         private int CnScope; //スコープ（SCOPE_PUBLIC or SCOPE_PRIVATE）
-        private int CnKind; //種類
+        private int CnKind; //種類（モジュール変数 or ローカル変数）
 
         private static long ClIdMax = 0;
+
+        public string ID { get { return CstVariableID; } }
+        public string Name { get { return CstName; } }
 
         public Variable(string stModID,string stName,int nScope, int nkind)
         {
@@ -35,7 +38,7 @@ namespace VBAnalyst
 
         public override string ToString()
         {
-            return string.Format("変数名:{0}, スコープ:{1}, 種類:{2}",CstName,GetScopeName(CnScope),GetKindName(CnKind));
+            return string.Format("ID:{0}, 名前:{1}, スコープ:{2}, 種類:{3}", CstVariableID, CstName, GetScopeName(CnScope),GetKindName(CnKind));
         }
     }
 }

@@ -15,6 +15,9 @@ namespace VBAnalyst
 
         private static long ClIdMax = 0;
 
+        public string ID { get { return CstProcedureID; } }
+        public string Name { get { return CstName; } }
+
         public Procedure(string stModID, string stName, int nScope)
         {
             CstProcedureID = CreateProcedureID();
@@ -30,7 +33,7 @@ namespace VBAnalyst
 
         public override string ToString()
         {
-            return string.Format("プロシージャ名:{0}, スコープ:{1}", CstName, GetScopeName(CnScope));
+            return string.Format("ID:{0}, 名前:{1}, スコープ:{2}", CstProcedureID, CstName, GetScopeName(CnScope));
         }
     }
 

@@ -14,18 +14,23 @@ namespace VBAnalyst
         Regex regVariable; //変数定義
         Regex regAssignment; //代入式
         Regex regEndProc; //End SubもしくはEnd Function
+        Regex regTypeDef; //ユーザー定義型
+        Regex regEnum; //列挙体
 
         public Analyzer()
         {
             //プロシージャの定義式
             regProcedure = new Regex(@"((?<scope>(Private|Public)) )?(Sub|Function) (?<name>.+?)\(", RegexOptions.Compiled);
             //変数の定義式
-            regVariable = new Regex(@"(?<scope>(Private|Public|Dim|Global))( Const)? (?!Sub|Function)(?<name>.*)", RegexOptions.Compiled);
+            regVariable = new Regex(@"(?<scope>(Private|Public|Dim|Global|Const))( Const)? (?!Sub|Function|Type|Enum)(?<name>.*)", RegexOptions.Compiled);
             //代入式（If文の条件部分も拾ってしまう）
             regAssignment = new Regex(@"(?<left>.*) = (?<right>.*)", RegexOptions.Compiled);
             //End句
             regEndProc = new Regex(@"End (Sub|Function)", RegexOptions.Compiled);
-
+            //ユーザー定義型
+            regTypeDef = new Regex(@"(?<scope>Private|Public)? ?Type (?<name>.*)", RegexOptions.Compiled);
+            //列挙体
+            regEnum = new Regex(@"(?<scope>Private|Public)? ?Enum (?<name>.*)", RegexOptions.Compiled);
         }
 
         /// <summary>
@@ -45,7 +50,7 @@ namespace VBAnalyst
             //関数外での定義を解析
             list = AnalyzeModuleDefinition(list, sourceFile);
 
-            //結果表示
+            ////結果表示
             //foreach (string item in list)
             //{
             //    Console.WriteLine(item);
@@ -55,55 +60,108 @@ namespace VBAnalyst
 
         }
 
-
-
-        //関数内を解析する（）
+        //関数内で参照している変数、関数を解析する
         public void AnalyzeProcedure(List<string> list, SourceFile sourceFile)
         {
+            Match match;
+            string stName;
+
             foreach (string item in list)
             {
+                //End Sub or Functionなら戻る
+                match = regEndProc.Match(item);
+                if (match.Success)
+                {
+                    continue;
+                }
+
+                //関数の定義式かを判定（stName更新）
+                match = regProcedure.Match(item);
+                if (match.Success)
+                {
+                    stName = match.Groups["name"].Value;
+                    //名前とモジュールIDをキーにしてプロシージャIDを取得したい
+                }
+
+
 
             }
         }
 
 
-            /// <summary>
-            /// モジュール変数と関数の定義式を解析する
-            /// </summary>
-            /// <param name="list"></param>
-            /// <returns></returns>
-            private IEnumerable<string> AnalyzeModuleDefinition(IEnumerable<string> list, SourceFile sourceFile)
+        /// <summary>
+        /// モジュール変数と関数の定義式を解析する。関数内のローカル変数も取得する？
+        /// </summary>
+        /// <param name="list"></param>
+        /// <returns></returns>
+        private IEnumerable<string> AnalyzeModuleDefinition(IEnumerable<string> list, SourceFile sourceFile)
         {
             Match match;
             string stScope;
             string stName;
-            bool blProcedureFlag = false; // 解析フラグ
+            bool blProcedureFlag = false; // 関数解析フラグ
+            bool blTypeFlag = false; // ユーザー定義型解析フラグ
+            bool blEnumFlag = false; // 列挙体解析フラグ
+            string stEnumScope = "";
+            string stProcedureID = "";
 
             foreach (string item in list)
             {
-                if (blProcedureFlag) //関数内ではEnd Subなどをチェック 
+                if (blProcedureFlag) //関数内の解析
                 {
+                    //ここでローカル変数も取得したい
+
+
+
+
+                    //Endかを判定
                     match = regEndProc.Match(item);
                     blProcedureFlag = !match.Success;
                     yield return item;
                     continue;
                 }
-                else  //関数外では定義式かをチェック
+
+                if (blEnumFlag) //Enum内の解析 
                 {
-                    //関数の定義式かを判定
-                    match = regProcedure.Match(item);
-                    if (match.Success)
+                    if (item == "End Enum") //Endかを判定
                     {
-                        stScope = match.Groups["scope"].Value;
-                        stName = match.Groups["name"].Value;
-                        AnalysisData.AddProcedures(sourceFile.ID, stName, GetProcedureScope(stScope));
-                        blProcedureFlag = true;
-                        yield return item;
-                        continue;
+                        blEnumFlag = false;
                     }
+                    else
+                    {
+                        //Enumの要素1つ1つを変数に登録
+                        stName = ExtractVariableName(item);
+                        AnalysisData.AddVariable(sourceFile.ID, stName, GetVariableScope(stEnumScope), KIND_MODULE);
+                    }
+                    continue;
                 }
 
-                //関数の外での変数の定義式かを判定
+                if (blTypeFlag) //ユーザー定義型内の解析
+                {
+                    if (item == "End Type") //Endかを判定
+                    {
+                        blTypeFlag = false;
+                    }
+                    continue;
+                }
+
+                //関数の定義式かを判定
+                match = regProcedure.Match(item);
+                if (match.Success)
+                {
+                    stScope = match.Groups["scope"].Value;
+                    stName = match.Groups["name"].Value;
+                    stProcedureID = AnalysisData.AddProcedure(sourceFile.ID, stName, GetProcedureScope(stScope));
+
+                    //ここで引数も取得
+                    RegArgVariable(stProcedureID,item);
+
+                    blProcedureFlag = true;
+                    yield return item;
+                    continue;
+                }
+
+                //変数の定義式かを判定
                 match = regVariable.Match(item);
                 if (match.Success)
                 {
@@ -112,32 +170,31 @@ namespace VBAnalyst
                     AnalysisData.AddVariable(sourceFile.ID, stName, GetVariableScope(stScope), KIND_MODULE);
                     continue;
                 }
-                else
+
+                //列挙体の定義式かを判定
+                match = regEnum.Match(item);
+                if (match.Success)
                 {
-                    yield return item;
+                    stEnumScope = match.Groups["scope"].Value;
+                    stName = ExtractVariableName(match.Groups["name"].Value);
+                    AnalysisData.AddVariable(sourceFile.ID, stName, GetVariableScope(stEnumScope), KIND_MODULE);
+                    blEnumFlag = true;
+                    continue;
                 }
 
+                //ユーザー定義型の定義式かをチェック
+                match = regTypeDef.Match(item);
+                if (match.Success)
+                {
+                    stScope = match.Groups["scope"].Value;
+                    stName = match.Groups["name"].Value;
+                    AnalysisData.AddType(sourceFile.ID, stName, GetProcedureScope(stScope));
+                    blTypeFlag = true;
+                    continue;
+                }
+
+                yield return item;
             }
-        }
-
-        /// <summary>
-        /// プロシージャの定義式か否かを判定
-        /// </summary>
-        /// <param name="stLine"></param>
-        /// <returns></returns>
-        private bool IsProcedureDefinition(string stLine)
-        {
-            return true;
-        }
-
-        /// <summary>
-        /// 変数の定義式か否かを判定
-        /// </summary>
-        /// <param name="stLine"></param>
-        /// <returns></returns>
-        private bool IsVariableDefinition(string stLine)
-        {
-            return true;
         }
 
         /// <summary>
@@ -296,6 +353,11 @@ namespace VBAnalyst
             return stRtn;
         }
 
+        /// <summary>
+        /// 文字列の半角スペースか左括弧までを取得
+        /// </summary>
+        /// <param name="stName"></param>
+        /// <returns></returns>
         private string ExtractVariableName(string stName)
         {
             char[] stArr = stName.Trim().ToCharArray();
@@ -311,6 +373,41 @@ namespace VBAnalyst
                 stRtn += item;
             }
             return stRtn;
+        }
+
+        /// <summary>
+        /// プロシージャ定義式から引数を抜き出して登録する（最初のカッコから最後のカッコまでの文字列を取得すればOK?）
+        /// </summary>
+        /// <param name="stProcedureID"></param>
+        /// <param name="stLine"></param>
+        private void RegArgVariable(string stProcedureID, string stLine)
+        {
+            //エラーチェック
+            if (stProcedureID == "" || stLine == "") { return; }
+
+            int nFirstIndex = stLine.IndexOf('(');
+            int nLastIndex = stLine.LastIndexOf(')');
+
+            if (nFirstIndex < 0 || nLastIndex < 0) { return; }
+
+            string stDefinition = stLine.Substring(nFirstIndex + 1, nLastIndex - nFirstIndex - 1).Trim();
+
+            if (stDefinition == "") { return; }
+
+            string[] stDefArr = stDefinition.Split(',');
+            string[] stVar;
+            string stVariable; 
+            foreach (string item in stDefArr)
+            {
+                stVariable = item;
+                stVariable = stVariable.Replace("ByVal", "");
+                stVariable = stVariable.Replace("ByRef", "");
+                stVariable = stVariable.Replace("Optional", "");
+                stVariable = stVariable.Replace("()", "");
+                stVar = stVariable.Split(' ');
+                stVariable = stVar[0].Trim();
+                AnalysisData.AddVariable(stProcedureID, stVariable, SCOPE_PRIVATE, KIND_LOCAL);
+            }
         }
     }
 }

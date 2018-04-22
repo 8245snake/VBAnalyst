@@ -28,7 +28,7 @@ namespace VBAnalyst
             {
                 case "Public":
                     return SCOPE_PUBLIC;
-                case "Gloval":
+                case "Global":
                     return SCOPE_PUBLIC;
                 case "Private":
                     return SCOPE_PRIVATE;
@@ -83,46 +83,49 @@ namespace VBAnalyst
         /// <summary>
         /// ファイルを読んで1行ずつ返す
         /// </summary>
-        /// <param name="stFilePath"></param>
+        /// <param name="stFilePath">ファイルのパス</param>
         /// <returns></returns>
         public static IEnumerable<string> ReadFileByLine(string stFilePath)
         {
             string stLine;
-            try
+
+            using (StreamReader sr = new StreamReader(stFilePath, Encoding.GetEncoding("Shift_JIS")))
             {
-                using (StreamReader sr = new StreamReader(stFilePath, Encoding.GetEncoding("Shift_JIS")))
+                try
                 {
                     while ((stLine = sr.ReadLine()) != null)
                     {
                         yield return stLine;
                     }
-
+                }
+                finally
+                {
                 }
             }
-            finally
-            {
 
-            }
         }
 
+        /// <summary>
+        /// テキストを書き込む
+        /// </summary>
+        /// <param name="stPath">ファイルのパス</param>
+        /// <param name="stText">書き込む文字列</param>
+        /// <param name="blAppend">上書きか否か</param>
         public static void WriteText(string stPath, string stText, bool blAppend = false)
         {
-            System.IO.StreamWriter sw;
-            try
+            using (System.IO.StreamWriter sw =
+                new System.IO.StreamWriter(stPath, blAppend, System.Text.Encoding.GetEncoding("shift_jis")))
             {
-                //ファイルを上書きし、Shift JISで書き込む
-                sw = new System.IO.StreamWriter(
-                    stPath,
-                    blAppend,
-                    System.Text.Encoding.GetEncoding("shift_jis"));
-                sw.WriteLine(stText);
-                //閉じる
-                sw.Close();
-            }
-            finally
-            {
+                try
+                {
+                    sw.WriteLine(stText);
+                }
+                catch
+                {
+                }
             }
         }
+
 
 
 

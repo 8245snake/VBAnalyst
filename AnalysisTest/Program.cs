@@ -23,15 +23,15 @@ namespace AnalysisTest
 
             // 計測開始
             stopwatch.Start();
-            foreach (string stLine in ReadFileByLine(stDir + "GPSPL88J_IF.vbp"))
+            foreach (string stLine in ReadFileByLine(stDir + "test.vbp"))
             {
                 file = SourceFileFactory.CreateSourceFile(stLine, stDir);
 
                 if (file != null)
                 {
-                    Console.WriteLine(file.ToString());
                     list = analyzer.AnalyzeModule(file);
-                    Console.WriteLine("");
+                    analyzer.AnalyzeProcedure(list,file);
+
                 }
             }
             // 計測停止
@@ -42,6 +42,7 @@ namespace AnalysisTest
 
             AnalysisData.EnumVariables();
             AnalysisData.EnumProcedures();
+            AnalysisData.EnumTypes();
 
             Console.ReadKey();
         }
